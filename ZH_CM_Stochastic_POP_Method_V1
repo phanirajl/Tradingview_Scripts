@@ -1,0 +1,48 @@
+//original Code created by ChrisMoody on October 23, 2014 by user request - platinumFX
+
+//edited by Z Huang 
+//adding Buy signal column
+//EURUSD 2 hours
+
+study(title="ZH_CM_Stochastic POP Method 1_V1", shorttitle="ZH_CM_Stochastic POP ")
+
+length = input(9, minval=1, title="Stochastic Length - Default 14; 2h-9")
+smoothK = input(5, minval=1, title="Smooth K - Default 5;2h-5")
+ul = input(53, minval=50, title="Buy Entry/Exit Line; 2h-53")
+ll = input(35, maxval=50, title="Sell Entry/Exit Line; 2h-35")
+st = input(false, title="Change Barcolor To Show Long, Short, or No Trades")
+
+//Stochastic Calculation
+k = sma(stoch(close, high, low, length), smoothK)
+
+//Upper and Lower Entry Lines
+uline = ul
+lline = ll
+
+//Bar Color Definitions
+Long() => st and k >= uline ? 1 : 0
+Short() => st and k <= lline ? 1 : 0
+NoTrade() => st and (k > lline and k < uline) ? 1 : 0
+
+//Color Definition for Stochastic Line
+col = k >= uline ? green : k <= lline ? red : blue
+
+//Stochastic Plots
+plot(k, title="Stochastic", style=line, linewidth=4, color=col)
+p1 = plot(uline, title="Upper Line", style=line, linewidth=4, color=green)
+p2 = plot(100, title="100 Line", color=white)
+fill(p1, p2, title="Long Trade Fill Color", color=green, transp=90)
+p3 = plot(lline, title="Lower Line", style=line, linewidth=4, color=red)
+p4 = plot(0, title="0 Line", color=white)
+fill(p1, p3, title="No Trade Fill Color", color=blue, transp=90)
+fill(p3, p4, title="Short Trade Fill Color", color=red, transp=90)
+
+
+/////////////////custom code///////////////////////////
+BuySignal = crossover(k,uline)  ? 1 : 0
+SellSignal = crossover(lline,k) ? 1 : 0
+
+bgcolor( BuySignal ? lime : na, transp=40)
+//bgcolor( SellSignal ? red : na, transp=40)
+//plotchar(BuySignal ? BuySignal : na, title="Buy signal", char='B', location=location.bottom, color=lime, transp=0, offset=0)
+//plotchar(SellSignal ? SellSignal : na, title="Sell signal", char='S', location=location.bottom, color=red, transp=0, offset=0)
