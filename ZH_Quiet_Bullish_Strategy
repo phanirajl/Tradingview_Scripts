@@ -1,0 +1,97 @@
+//@version=2
+strategy("Quiet_Bullish_AAPL", overlay=false, initial_capital=50000, pyramiding=5, currency=currency.USD, calc_on_every_tick=true)
+ 
+pd = input(22, title="LookBack Period Standard Deviation High")
+bbl = input(20, title="Bolinger Band Length")
+mult = input(2.0    , minval=1, maxval=5, title="Bollinger Band Standard Devaition Up")
+lb = input(50  , title="Look Back Period Percentile High")
+ph = input(.85, title="Highest Percentile - 0.90=90%, 0.95=95%, 0.99=99%")
+pl = input(1.01, title="Lowest Percentile - 1.10=90%, 1.05=95%, 1.01=99%")
+hp = input(false, title="Show High Range - Based on Percentile and LookBack Period?")
+sd = input(false, title="Show Standard Deviation Line?")
+rsi = rsi(close, 14)
+ 
+wvf = ((highest(close, pd)-low)/(highest(close, pd)))*100
+ 
+sDev = mult * stdev(wvf, bbl)
+midLine = sma(wvf, bbl)
+lowerBand = midLine - sDev
+upperBand = midLine + sDev
+ 
+rangeHigh = (highest(wvf, lb)) * ph
+rangeLow = (lowest(wvf, lb)) * pl
+ 
+//// CUSTOM CODE
+4hr_VIX_buysignal = (wvf >= 1.3 and rsi <= 34) ? 1:0
+ 
+ 
+//////////////////////////////////////////////////////////////////// PPO SIGNALS ////////////////////////// COMMENTS REMOVED /////////////////////////////////////
+ 
+ 
+pctile = input(90, title="Percentile Threshold Extreme Value, Exceeding Creates Colored Histogram")
+wrnpctile = input(70, title="Percentile Threshold Warning Value, Exceeding Creates Colored Histogram")
+Short = input(0.4, title="PPO Setting")
+Long = input(0.8, title="PPO Setting")
+lkbT = input(200,title="Look Back Period For 'Tops' Percent Rank is based off of?")
+lkbB = input(200,title="Look Back Period For 'Bottoms' Percent Rank is based off of?")
+sl=input(true,title="Show Threshold Line?")
+swl=input(true,title="Show Warning Threshold Line?")
+ 
+//Laguerre PPO Code from TheLark
+lag(g, p) =>
+    L0 = (1 - g)*p+g*nz(L0[1])
+    L1 = -g*L0+nz(L0[1])+g*nz(L1[1])
+    L2 = -g*L1+nz(L1[1])+g*nz(L2[1])
+    L3 = -g*L2+nz(L2[1])+g*nz(L3[1])
+    f = (L0 + 2*L1 + 2*L2 + L3)/6
+    f
+lmas = lag(Short, hl2)
+lmal = lag(Long, hl2)
+ 
+pctileB = pctile * -1
+wrnpctileB = wrnpctile * -1
+ 
+//PPO Plot
+ppoT = (lmas-lmal)/lmal*100
+ppoB = (lmal - lmas)/lmal*100
+//PercentRank of PPO
+pctRankT = percentrank(ppoT, lkbT)
+pctRankB = percentrank(ppoB, lkbB) * -1
+ 
+//// CUSTOM CODE
+4hr_PPO_buysignal = ((pctRankB <= pctileB) or (pctRankB <= wrnpctileB and pctRankB > pctileB)) ? 1:0
+4hr_PPO_sellsignal = ((pctRankT >= wrnpctile)) ? 1:0
+ 
+ 
+//////////////////////////////////////////////////////////////////// WT SIGNALS ////////////////////////// COMMENTS REMOVED /////////////////////////////////////
+
+n1 = input(10, "Channel Length")
+n2 = input(21, "Average Length")
+obLevel1 = input(60, "Over Bought Level 1")
+obLevel2 = input(53, "Over Bought Level 2")
+osLevel1 = input(-60, "Over Sold Level 1")
+osLevel2 = input(-53, "Over Sold Level 2")
+ 
+ap = hlc3 
+esa = ema(ap, n1)
+d = ema(abs(ap - esa), n1)
+ci = (ap - esa) / (0.015 * d)
+tci = ema(ci, n2)
+ 
+wt1 = tci
+wt2 = sma(wt1,4)
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ALL PLOTS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+yearstart = input(2017)
+yearend = input(2017)
+monthstart = input (1)
+VIX_and_PPO_buysignal = (4hr_VIX_buysignal) and (4hr_PPO_buysignal) ? 1:0
+VIX_and_PPO_sellsignal = (4hr_PPO_sellsignal) and (wt2>=23) ? 1:0
+plot (VIX_and_PPO_buysignal, title="VIXPPO_Buy_Alert", style=line, linewidth=1, color=lime)
+plot (VIX_and_PPO_sellsignal, title="VIXPPO_Sell_Alert", style=line, linewidth=1, color=red)
+
+if year >= yearstart and year <= yearend and month >= monthstart and (VIX_and_PPO_buysignal)
+    strategy.entry("Buy", strategy.long)
+
+if (VIX_and_PPO_sellsignal)
+    strategy.close_all()
